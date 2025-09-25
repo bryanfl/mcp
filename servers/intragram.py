@@ -87,12 +87,12 @@ def listar_comentarios_publicaciones_instagram_utp(from_date: str, to_date: str)
         return {"error": str(req_error)}
 
 @mcp.tool(name="search")
-def search(query: Optional[str] = None,
-           from_date: Optional[str] = None,
-           to_date: Optional[str] = None) -> List[Dict]:
+def search(query: str) -> List[Dict]:
     """
-    Acción 'search' requerida por ChatGPT. Devuelve resultados simulados.
+    Acción 'search' requerida por ChatGPT.
+    Debe recibir un parámetro obligatorio `query` de tipo string.
     """
+    # Devuelve resultados estáticos de ejemplo
     return [
         {
             "id": "1",
@@ -108,12 +108,11 @@ def search(query: Optional[str] = None,
         }
     ]
 
-
-# --- Herramienta fetch con datos estáticos ---
 @mcp.tool(name="fetch")
-def fetch(id: Optional[str] = None, url: Optional[str] = None) -> Dict:
+def fetch(id: str) -> Dict:
     """
-    Acción 'fetch' requerida por ChatGPT. Devuelve detalles simulados de un resultado.
+    Acción 'fetch' requerida por ChatGPT.
+    Debe aceptar un parámetro `id` (string) y devolver el contenido completo.
     """
     if id == "1":
         return {
@@ -135,6 +134,6 @@ def fetch(id: Optional[str] = None, url: Optional[str] = None) -> Dict:
         }
     else:
         return {"error": "ID no encontrado en los datos estáticos."}
-
+    
 if __name__ == "__main__":
     mcp.run(transport="http", host="0.0.0.0", port=8002, path="/mcp")
