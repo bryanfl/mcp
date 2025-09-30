@@ -4,7 +4,7 @@ import requests
 from fastapi import Query
 from dotenv import load_dotenv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = FastAPI()
 
@@ -56,6 +56,10 @@ def get_media(
     if from_date:
         params["since"] = from_date
     if to_date:
+        if from_date == to_date:
+            to_date_dt = datetime.strptime(to_date, "%Y-%m-%d")
+            to_date_dt += timedelta(days=1)
+            to_date = to_date_dt.strftime("%Y-%m-%d")
         params["until"] = to_date
 
     response = requests.get(url, params=params)
@@ -64,4 +68,4 @@ def get_media(
     return response.json()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
