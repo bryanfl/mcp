@@ -1,6 +1,6 @@
 import requests
 from datetime import datetime, timedelta
-from token_crm import TokenClient
+from crm.token_crm import TokenClient
 import re
 
 import xml.etree.ElementTree as ET

@@ -23,8 +23,8 @@ def get_month_name_spanish(month_number: int) -> str:
 async def start():
     """Inicializar el chat y verificar SLM"""
     await cl.Message(
-        content="🤖 **Bot MCP-UTP Instagram** iniciando...\n\n"
-                "Verificando modelo de IA local..."
+        content="🤖 **Bot MCP-UTP** iniciando...\n\n"
+                #"Verificando modelo de IA local..."
     ).send()
     
     try:
@@ -43,14 +43,14 @@ async def start():
             ).send()
             await asyncio.to_thread(ollama.pull, SLM_MODEL)
         
-        await cl.Message(
-            content=f"✅ Modelo **{SLM_MODEL}** listo!\n\n"
-                   f"Puedo ayudarte con:\n"
-                   f"• 📊 Consultar publicaciones de Instagram UTP\n"
-                   f"• 💬 Ver comentarios de publicaciones\n"
-                   f"• 📈 Obtener estadísticas\n\n"
-                   f"¡Escribe tu pregunta!"
-        ).send()
+        # await cl.Message(
+        #     content=f"✅ Modelo **{SLM_MODEL}** listo!\n\n"
+        #            f"Puedo ayudarte con:\n"
+        #            f"• 📊 Consultar publicaciones de Instagram UTP\n"
+        #            f"• 💬 Ver comentarios de publicaciones\n"
+        #            f"• 📈 Obtener estadísticas\n\n"
+        #            f"¡Escribe tu pregunta!"
+        # ).send()
     except Exception as e:
         await cl.Message(
             content=f"⚠️ Error con modelo IA: {str(e)}\n"
@@ -98,7 +98,19 @@ async def main(message: cl.Message):
         - Siempre ten en cuenta la fecha actual antes de responder sobre fechas futuras
         - Si el usuario pregunta por fechas futuras, explícale amablemente que son futuras
         - Para fechas pasadas, usa las herramientas disponibles para obtener datos reales
-        - Mantén el contexto de la conversación anterior y sé coherente en tus respuestas."""
+        - Mantén el contexto de la conversación anterior y sé coherente en tus respuestas.
+        - SIempre respondes en español.
+        - Si no sabes la respuesta, di que no lo sabes.
+        - Si el usuario pregunta por datos específicos (números, estadísticas, publicaciones, comentarios, etc.)
+          entre fechas pasadas, usa las herramientas disponibles para obtener datos reales.
+        - Si el usuario no especifica fechas, asume que se refiere al mes actual.
+        - Si el usuario pregunta por datos del mes pasado, úsalo como rango de fechas.
+        - Si el usuario pregunta por datos del año pasado, úsalo como rango de fechas.
+        - Si el usuario pregunta por datos de una semana específica, úsalo como rango de fechas.
+        - Si el usuario pregunta por datos de "hoy", úsalo como rango de fechas.
+        - No te explayes mucho en tu respuesta, sé conciso y directo.
+        - Solo debes responder a lo que el usuario te pregunta, no generes respuestas adicionales.
+        """
 
         
         messages = [
@@ -165,73 +177,81 @@ async def handle_tool_calls(msg, tool_calls, messages, mcp_tools, full_response,
     tool_summary = await create_tool_summary(tool_calls, mcp_tools)
 
      # Crear acciones/botones
-    actions = [
-        cl.Action(name="confirm_yes", value="yes", label="✅ Sí, ejecutar búsquedas", payload={"confirm": True}),
-        cl.Action(name="confirm_no", value="no", label="❌ No, cancelar", payload={"confirm": False})
-    ]
+    # actions = [
+    #     cl.Action(name="confirm_yes", value="yes", label="✅ Sí, ejecutar búsquedas", payload={"confirm": True}),
+    #     cl.Action(name="confirm_no", value="no", label="❌ No, cancelar", payload={"confirm": False})
+    # ]
     
     # Enviar mensaje con botones
-    confirmation_msg = await cl.Message(
-        content=f"🔍 **Solicitud de Búsqueda**\n\n"
-               f"Para responder a tu pregunta, necesito ejecutar las siguientes búsquedas:\n\n"
-               f"{tool_summary}\n\n"
-               f"¿Quieres que proceda con estas búsquedas?",
-        actions=actions
-    ).send()
+    # confirmation_msg = await cl.Message(
+    #     content=f"🔍 **Solicitud de Búsqueda**\n\n"
+    #            f"Para responder a tu pregunta, necesito ejecutar las siguientes búsquedas:\n\n"
+    #            f"{tool_summary}\n\n"
+    #            f"¿Quieres que proceda con estas búsquedas?",
+    #     actions=actions
+    # ).send()
 
-    await confirmation_msg.send()
+    await msg.stream_token(
+        f"🔍 **Solicitud de Búsqueda**\n\n"
+            f"Para responder a tu pregunta, ejecutare las siguientes búsquedas:\n\n"
+            f"{tool_summary}\n\n"
+    )
 
-    res = await cl.AskActionMessage(
-        content="Selecciona una opción:",
-        actions=actions,
-        timeout=60
-    ).send()
+    # await confirmation_msg.send()
 
-    confirmation_msg.actions = []
-    await confirmation_msg.update()
+    # res = await cl.AskActionMessage(
+    #     content="Selecciona una opción:",
+    #     actions=actions,
+    #     timeout=60
+    # ).send()
 
-    if res and res["name"] == "confirm_yes":
-        await msg.stream_token("\n\n✅ **Usuario aceptó - ejecutando búsquedas...**\n")
+    # confirmation_msg.actions = []
+    # await confirmation_msg.update(content="")
 
-        for tool_call in tool_calls:
-            # await msg.stream_token(f"\n\n🛠️ **Herramienta {tool_call.function.name}**\n")
+    # if res and res["name"] == "confirm_yes":
+    # await msg.stream_token("\n\n✅ **Usuario aceptó - ejecutando búsquedas...**\n")
 
-            if hasattr(tool_call, 'function'):
-                tool_name = tool_call.function.name
-                tool_args = tool_call.function.arguments
+    for tool_call in tool_calls:
+        # await msg.stream_token(f"\n\n🛠️ **Herramienta {tool_call.function.name}**\n")
 
-                # await msg.stream_token(f"✅ **Tool Parametros**: {tool_args}\n")
+        if hasattr(tool_call, 'function'):
+            tool_name = tool_call.function.name
+            tool_args = tool_call.function.arguments
 
-                # Ejecutar la herramienta MCP
-                tool_result = await execute_mcp_tool(tool_name, tool_args, mcp_tools)
-                
-                # Agregar resultado al contexto para segunda llamada
-                messages.append({
-                    "role": "tool",
-                    "content": tool_result,
-                    "tool_call_id": getattr(tool_call, 'id', '')
-                })
-                
-                # await msg.stream_token(f"✅ **{tool_name}**: {tool_result}\n")
-        
-        # 6. Segunda llamada con los resultados de las herramientas
-        await msg.stream_token("\n📝 **Generando respuesta final...**\n")
-        
-        final_response = ollama.chat(
-            model=SLM_MODEL,
-            messages=messages,
-            stream=True
-        )
-        
-        for chunk in final_response:
-            if hasattr(chunk, 'message') and chunk.message:
-                content = chunk.message.get('content', '')
-                if content:
-                    full_response += content
-                    await msg.stream_token(content)
-    else:
-        await msg.stream_token("\n❌ Búsqueda cancelada por el usuario.\n")
-        full_response += "\n❌ Búsqueda cancelada por el usuario.\n"
+            # await msg.stream_token(f"✅ **Tool Parametros**: {tool_args}\n")
+
+            # Ejecutar la herramienta MCP
+            tool_result = await execute_mcp_tool(tool_name, tool_args, mcp_tools)
+
+            print("Tool result:", tool_result)
+
+            # Agregar resultado al contexto para segunda llamada
+            messages.append({
+                "role": "tool",
+                "content": tool_result,
+                "tool_call_id": getattr(tool_call, 'id', '')
+            })
+            
+            # await msg.stream_token(f"✅ **{tool_name}**: {tool_result}\n")
+    
+    # 6. Segunda llamada con los resultados de las herramientas
+    await msg.stream_token("\n📝 **Generando respuesta final...**\n")
+    
+    final_response = ollama.chat(
+        model=SLM_MODEL,
+        messages=messages,
+        stream=True
+    )
+    
+    for chunk in final_response:
+        if hasattr(chunk, 'message') and chunk.message:
+            content = chunk.message.get('content', '')
+            if content:
+                full_response += content
+                await msg.stream_token(content)
+    # else:
+    #     await msg.stream_token("\n❌ Búsqueda cancelada por el usuario.\n")
+    #     full_response += "\n❌ Búsqueda cancelada por el usuario.\n"
     
     # ACTUALIZAR HISTORIAL de conversación
     chat_history = cl.user_session.get("chat_history", [])
@@ -310,6 +330,7 @@ async def call_tool(mcp_name: str, tool_name: str, tool_args: dict):
         
         # Llamar a la herramienta
         result = await mcp_session.call_tool(tool_name, tool_args)
+        print("Tool result:", result)
         return str(result.content)
         
     except Exception as e:
