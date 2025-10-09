@@ -127,6 +127,32 @@ def obtener_leads_crm_facebook(from_date: str, to_date: str) -> Dict:
     except requests.RequestException as req_error:
         print(f"Request error: {req_error}")
         return {"error": str(req_error)}
+    
+@mcp.tool()
+def obtener_informacion_campaign_facebook(from_date: str, to_date: str, campaigns_name: list[str]) -> Dict:
+    """Obtiene la información de las campañas de Facebook entre dos fechas específicas y enviando el nombre de las campañas.
+    Esto tambien dara la información de los conjuntos de anuncios y sus métricas.
+    Args:
+        from_date: Fecha de inicio en formato 'YYYY-MM-DD'.
+        to_date: Fecha de fin en formato 'YYYY-MM-DD'.
+        campaigns_name: Lista de nombres de campañas a filtrar.
+    """
+    try:
+        response = requests.get(
+            f"http://0.0.0.0:8001/meta/ads",
+            params={"from_date": from_date, "to_date": to_date, "campaigns_name": json.dumps(campaigns_name)}
+        )
+
+        response.raise_for_status()
+        res = response.json()
+
+        return {
+            "success": True,
+            "campaigns": res["data"],
+        }
+    except requests.RequestException as req_error:
+        print(f"Request error: {req_error}")
+        return {"error": str(req_error)}
 
 
 def preprocess_lead_data(data):

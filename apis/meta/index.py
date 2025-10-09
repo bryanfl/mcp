@@ -83,9 +83,9 @@ def get_ads(
     campaigns_id = [campaign["id"] for campaign in data if campaign['name'] in campaigns_name]
 
     # OBTENER METRICAS DE CONJUNTOS
-    print(f"id,name,status,adsets{{id,name,insights.time_range({params['since']}, {params['until']})}}")
     params_metrics = {
-        "fields": "id,name,status,adsets{id,name,insights}",
+        # "fields": "id,name,adsets{id,name,insights}",
+        "fields": "id,name,adsets{id}",
         "limit": 100,
         "access_token": access_token,
         "filtering": json.dumps([
@@ -95,19 +95,24 @@ def get_ads(
                 "value": campaigns_id
             },
         ]),
-        # "time_range[since]": params["since"],  # Separate parameter
-        # "time_range[until]": params["until"]   # Separate parameter
-         "date_preset": "last_7d"
     }
-    url = f"https://graph.facebook.com/v23.0/120228305294840053/insights"
-    params = {
-        "fields": "spend,date_start,date_stop",
-        "access_token": access_token,
-        "time_range[since]": "2025-09-22",
-        "time_range[until]": "2025-09-25"
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    # if response.status_code != 200:
-        #return {"success": False, "error": response.json()}
-    return {"success": True, "data": data}
+
+    response = requests.get(url, params=params_metrics)
+    res = response.json()
+
+    for campaign in res["data"]:
+        for adset in campaign.get("adsets", {}).get("data", []):
+            adset_id = adset["id"]
+            insights_url = f"https://graph.facebook.com/v23.0/{adset_id}/insights"
+            insights_params = {
+                "fields": "impressions,clicks,spend,cpc,ctr,reach,frequency",
+                "access_token": access_token,
+                "time_range[since]": params["since"],  # Separate parameter
+                "time_range[until]": params["until"]   # Separate parameter
+            }
+            insights_response = requests.get(insights_url, params=insights_params)
+            insights_data = insights_response.json().get("data", [])
+            adset["insights"] = insights_data if insights_data else []
+
+
+    return {"success": True, "data": res}
