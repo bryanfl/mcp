@@ -11,3 +11,6 @@ wheels/
 uv.lock
 .env
 .json
+
+external_data/google/drive/service_drive.json
+external_data/google/settings_bigquery.json
