@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from external_data.google.bigquery import execute_query, schema_campaign_info
 import requests
 import json
+from typing import Annotated
 
 mcp = FastMCP("mcp-ads", stateless_http=True)
 
@@ -62,26 +63,18 @@ def obtener_informacion_campaigns_crm(from_date: str, to_date: str, campaigns_na
     except requests.RequestException as req_error:
         print(f"Request error: {req_error}")
         return {"error": str(req_error)}
+
     
-@mcp.tool()
-def obtener_informacion_campaign_ads(sql_query: str) -> Dict:
-    print(schema_campaign_info)
-    f"""Obtiene la información de las campañas de Google, Bing o Tiktok entre dos fechas específicas y enviando el nombre de las campañas.
-    Esto tambien dara la información de los conjuntos de anuncios y sus métricas.
 
-    USA EL SCHEMA DISPONIBLE Y ADAPTA TU CONSULTA SQL A ESTE FORMATO:
-    {json.dumps(schema_campaign_info, indent=4)}
+@mcp.tool(
+    name="obtener_informacion_campaign_ads",
+    description="Obtiene la información de las campañas de Google, Bing o Tiktok y Facebook.",
+    tags=["ads", "google", "bing", "tiktok", "facebook", "meta_ads", "bigquery"]
+)
+def obtener_informacion_campaign_ads(
+    sql_query: Annotated[str, "Consulta SQL para ejecutar en BigQuery siempre a la tabla api-audiencias-309221.raw_windsor_ads.campañas_unificadas"]
+) -> Dict:
 
-    Notas a tener en cuenta:
-    - Si te mencionan alguna plataforma, google, tiktok, bing o facebook, esto vara el 'source'.
-    - Debes ejecutar el tool 'obtener_informacion_campaigns_crm' para obtener los leads generados en CRM y asi tener un analisis completo del funnel solo si te piden informacion de leads.
-    - facebook es igual a meta_ads.
-    - utm_campaign es igual a campaign.
-    - utm_content es igual a ad_group_name.
-
-    Args:
-        sql_query: Consulta SQL para ejecutar en BigQuery.
-    """
     try:
         res = execute_query(sql_query)
 
@@ -166,4 +159,4 @@ def preprocess_lead_data(data):
     }
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8003, path="/mcp")
+    mcp.run(transport="http", host="0.0.0.0", port=8002, path="/mcp")
