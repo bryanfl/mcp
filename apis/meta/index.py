@@ -1,12 +1,13 @@
 from fastapi import FastAPI
-import uvicorn
-import requests
 from fastapi import Query
 from dotenv import load_dotenv
-import os
+# from google.cloud import bigquery
 from datetime import datetime, timedelta
 from fastapi.routing import APIRouter
 from crm.leads import tokenLeads
+import requests
+import uvicorn
+import os
 import json 
 
 app = FastAPI()
@@ -19,10 +20,14 @@ ad_account_id = "act_268788766904418"
 @router.get("/leads")
 def get_leads(
     from_date: str = Query(None, alias="from_date"),
-    to_date: str = Query(None, alias="to_date")
+    to_date: str = Query(None, alias="to_date"),
+    campaigns_name: list[str] = Query(None, alias="campaigns_name")
 ):
     if not from_date or not to_date:
         return {"success": False, "error": "from_date and to_date are required parameters."}
+
+    if campaigns_name:
+        campaigns_name = json.loads(campaigns_name[0])
 
     if to_date:
         if from_date == to_date:
@@ -31,7 +36,7 @@ def get_leads(
             to_date = to_date_dt.strftime("%Y-%m-%d")
         to_date = to_date
 
-    response = tokenLeads(from_date, to_date)
+    response = tokenLeads(from_date, to_date, campaigns_name)
     # if response.status_code != 200:
         #return {"success": False, "error": response.json()}
     return {"success": True, "data": response}
@@ -85,7 +90,7 @@ def get_ads(
     # OBTENER METRICAS DE CONJUNTOS
     params_metrics = {
         # "fields": "id,name,adsets{id,name,insights}",
-        "fields": "id,name,adsets{id}",
+        "fields": "id,name,adsets{id,name}",
         "limit": 100,
         "access_token": access_token,
         "filtering": json.dumps([
@@ -116,3 +121,26 @@ def get_ads(
 
 
     return {"success": True, "data": res}
+
+# @router.get("/ads-bg")
+# def get_ads(
+#     from_date: str = Query(None, alias="from_date"),
+#     to_date: str = Query(None, alias="to_date"),
+#     campaigns_name: list[str] = Query(None, alias="campaigns_name")
+# ):
+#     if not from_date or not to_date:
+#         return {"success": False, "error": "from_date and to_date are required parameters."}
+
+#     if campaigns_name is None or len(campaigns_name) == 0:
+#         return {"success": False, "error": "At least one campaign name must be provided."}
+
+#     if campaigns_name:
+#         campaigns_name = json.loads(campaigns_name[0])
+
+#     QUERY = (
+#         f'SELECT * FROM `api-audiencias-309221.raw_windsor_ads.Raw_windsor_ads_2years` WHERE date BETWEEN "{from_date}" AND "{to_date}" ORDER BY date ASC')
+    
+#     res_bg = client.query(QUERY)
+#     res = res_bg.result().to_dataframe().to_dict(orient='records')
+
+#     return {"success": True, "data": res}

@@ -5,8 +5,18 @@ import re
 
 import xml.etree.ElementTree as ET
 
-def crmquery3(pageQueryNumber, pageQueryCookie, inicio, fin):
-    return f"""leads?fetchXml=<?xml version="1.0" encoding="UTF-8"?>
+def crmquery3(pageQueryNumber, pageQueryCookie, inicio, fin, campaings = None):
+    campaigns_condition = ""
+    if campaings is not None:
+        # Generar la condición IN con etiquetas <value>
+        campaigns_values = "\n".join([f"<value>{campaign}</value>" for campaign in campaings])
+        campaigns_condition = f"""
+        <condition attribute="utp_nombre_campana_digital" operator="in">
+            {campaigns_values}
+        </condition>
+        """
+
+    query = f"""leads?fetchXml=<?xml version="1.0" encoding="UTF-8"?>
     <fetch version="1.0" output-format="xml-platform"
     returntotalrecordcount="true"
     mapping="logical"
@@ -14,60 +24,67 @@ def crmquery3(pageQueryNumber, pageQueryCookie, inicio, fin):
     distinct="true" >
     {pageQueryCookie}
     <entity name="lead" >
-    <attribute name="utp_client_id" />
-    <attribute name="createdon" />
-    <attribute name="emailaddress1" />
-    <attribute name="firstname" />
-    <attribute name="lastname" />
-    <attribute name="mobilephone" />
-    <attribute name="onetoone_nro" />
-    <attribute name="statecode" />
-    <attribute name="statuscode" />
-    <attribute name="leadid" />
-    <attribute name="address1_line1" />
-    <attribute name="utp_sub_grado" />
-    <attribute name="utp_utm_term" />
-    <attribute name="utp_nombre_campana_digital" />
-    <attribute name="utp_id_campana_digital" />
-    <attribute name="utp_utm_content" />
-    <attribute name="utp_utm_source" />
-    <link-entity name="product" from="productid" to="onetoone_producto" link-type="outer" alias="pro" >
-    <attribute name="name" />
-    <attribute name="onetoone_codigopeoplesoft" />
-    </link-entity>
-    <link-entity name="onetoone_sedeeducativa" from="onetoone_sedeeducativaid" to="onetoone_sededeseada" link-type="outer" alias="sed" >
-    <attribute name="onetoone_name" />
-    <attribute name="onetoone_codigo" />
-    </link-entity>
-    <link-entity name="onetoone_detallefuenteorigen" from="onetoone_detallefuenteorigenid" to="onetoone_detallefuenteorigen" link-type="inner" alias="dfu" >
-    <attribute name="onetoone_name" />
-    </link-entity>
-    <link-entity name="onetoone_pais" from="onetoone_paisid" to="utp_pais_origen" link-type="outer" alias="pai" >
-    <attribute name="onetoone_name" />
-    </link-entity>
-    <link-entity name="contact" from="originatingleadid" to="leadid" link-type="outer" >
-    <link-entity name="opportunity" from="customerid" to="contactid" link-type="outer" alias="opor" >
-    <attribute name="onetoone_pagodepostulacionpre" />
-    <attribute name="onetoone_pagodematricula" />
-    <attribute name="utp_fecha_pago_matricula" />
-    <attribute name="utp_fecha_pago_inscripcion" />
-    <link-entity name="onetoone_postulante" from="onetoone_oportunidad" to="opportunityid" link-type="outer" alias="pos">
-    <attribute name="onetoone_dopagodepostulacionpre" />
-    </link-entity>
-    </link-entity>
-    </link-entity>
-    <filter type="and" >
-    <condition attribute="createdon" operator="ge" value="{inicio}" />
-    <condition attribute="createdon" operator="le" value="{fin}" />
-    </filter>
+        <attribute name="utp_client_id" />
+        <attribute name="createdon" />
+        <attribute name="emailaddress1" />
+        <attribute name="firstname" />
+        <attribute name="lastname" />
+        <attribute name="mobilephone" />
+        <attribute name="onetoone_nro" />
+        <attribute name="statecode" />
+        <attribute name="statuscode" />
+        <attribute name="leadid" />
+        <attribute name="address1_line1" />
+        <attribute name="utp_sub_grado" />
+        <attribute name="utp_utm_term" />
+        <attribute name="utp_nombre_campana_digital" />
+        <attribute name="utp_id_campana_digital" />
+        <attribute name="utp_utm_content" />
+        <attribute name="utp_utm_source" />
+        <link-entity name="product" from="productid" to="onetoone_producto" link-type="outer" alias="pro" >
+            <attribute name="name" />
+            <attribute name="onetoone_codigopeoplesoft" />
+        </link-entity>
+        <link-entity name="onetoone_sedeeducativa" from="onetoone_sedeeducativaid" to="onetoone_sededeseada" link-type="outer" alias="sed" >
+            <attribute name="onetoone_name" />
+            <attribute name="onetoone_codigo" />
+        </link-entity>
+        <link-entity name="onetoone_detallefuenteorigen" from="onetoone_detallefuenteorigenid" to="onetoone_detallefuenteorigen" link-type="inner" alias="dfu" >
+            <attribute name="onetoone_name" />
+        </link-entity>
+        <link-entity name="onetoone_pais" from="onetoone_paisid" to="utp_pais_origen" link-type="outer" alias="pai" >
+            <attribute name="onetoone_name" />
+        </link-entity>
+        <link-entity name="contact" from="originatingleadid" to="leadid" link-type="outer" >
+            <link-entity name="opportunity" from="customerid" to="contactid" link-type="outer" alias="opor" >
+                <attribute name="onetoone_pagodepostulacionpre" />
+                <attribute name="onetoone_pagodematricula" />
+                <attribute name="utp_fecha_pago_matricula" />
+                <attribute name="utp_fecha_pago_inscripcion" />
+                <link-entity name="onetoone_postulante" from="onetoone_oportunidad" to="opportunityid" link-type="outer" alias="pos">
+                    <attribute name="onetoone_dopagodepostulacionpre" />
+                </link-entity>
+            </link-entity>
+        </link-entity>
+        <filter type="and" >
+            <condition attribute="createdon" operator="ge" value="{inicio}" />
+            <condition attribute="createdon" operator="lt" value="{fin}" />
+            {campaigns_condition}
+        </filter>
+       
     </entity>
     </fetch>"""
+    #  <filter type="or">
+    #         <condition attribute="detail_source" operator="like" value="%facebook%" />
+    #         <condition attribute="detail_source" operator="like" value="%fb%" />
+    #     </filter>
+    return query
 
-def getLeadsPaginados(crmApi, crmrequestheaders, inicio, fin, url=None, leads=None, valor_pagina=1):
+def getLeadsPaginados(crmApi, crmrequestheaders, inicio, fin, url=None, leads=None, valor_pagina=1, campaigns=None):
     if leads is None:
         leads = []
     if url is None:
-        url = f"{crmApi}{crmquery3(valor_pagina, '', inicio, fin)}"
+        url = f"{crmApi}{crmquery3(valor_pagina, '', inicio, fin, campaigns)}"
     response = requests.get(url, headers=crmrequestheaders)
     if response.status_code != 200:
         raise Exception(f"{response.status_code}: {response.reason}")
@@ -81,16 +98,24 @@ def getLeadsPaginados(crmApi, crmrequestheaders, inicio, fin, url=None, leads=No
         pageQueryCookie = pagingcookie
         return getLeadsPaginados(
             crmApi, crmrequestheaders, inicio, fin,
-            url=f"{crmApi}{crmquery3(pageQueryNumber, pageQueryCookie, inicio, fin)}",
+            url=f"{crmApi}{crmquery3(pageQueryNumber, pageQueryCookie, inicio, fin, campaigns)}",
             leads=leads,
             valor_pagina=pageQueryNumber
         )
     else:
         return leads
 
-def tokenLeads(inicio, fin):
+def tokenLeads(inicio, fin, campaigns_name):
+    fin = datetime.strptime(fin, "%Y-%m-%d")
+    fin += timedelta(days=1)
+    fin = fin.strftime("%Y-%m-%d")
+
+    if len(campaigns_name) == 0:
+        return {"success": False, "error": "At least one campaign name must be provided."}
+
     print(inicio)
     print(fin)
+    print(campaigns_name)
     crmApi = 'https://utp.api.crm2.dynamics.com/api/data/v9.2/'
     solicitudToken = TokenClient()
     responseSolicitudToken = solicitudToken.get_token()
@@ -102,7 +127,7 @@ def tokenLeads(inicio, fin):
         'Content-Type': 'application/json; charset=utf-8',
         'Prefer': 'odata.include-annotations=*'
     }
-    leads = getLeadsPaginados(crmApi, crmrequestheaders, inicio, fin)
+    leads = getLeadsPaginados(crmApi, crmrequestheaders, inicio, fin, campaigns=campaigns_name)
     regexTelefono = re.compile(r"\d{9}")
     regexEmail = re.compile(r"^[\w!#\$%&'\*\+\/\=\?\^`\{\|\}~\-]+(:?\.[\w!#\$%&'\*\+\/\=\?\^`\{\|\}~\-]+)*@(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?$", re.I)
     LeadsHash = []
@@ -112,6 +137,7 @@ def tokenLeads(inicio, fin):
             pos_pago = items.get('pos.onetoone_dopagodepostulacionpre')
             opor_matricula = items.get('opor.onetoone_pagodematricula')
             statecode = items.get('statecode')
+
             if pos_pago is True:
                 if opor_matricula is True:
                     status_crm = 'matriculado'
@@ -122,6 +148,8 @@ def tokenLeads(inicio, fin):
             elif pos_pago is None:
                 if statecode != 2:
                     status_crm = 'valido'
+
+            print(items)
             LeadsHash.append({
                 'detail_source': items.get("dfu.onetoone_name"),
                 'phone': items.get('mobilephone'),
@@ -129,6 +157,7 @@ def tokenLeads(inicio, fin):
                 'utm_campaign': items.get('utp_nombre_campana_digital'),
                 'utm_content': items.get('utp_utm_content'),
                 'status_crm': status_crm,
+                "date_created": items.get('createdon'),
             })
     filtered = [
         item for item in LeadsHash
