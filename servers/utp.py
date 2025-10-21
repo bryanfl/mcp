@@ -84,7 +84,7 @@ def solicitar_urls_informacion_utp(
                 utp_urls["url_modalidades"]["urls"].append(url)
             elif ".pe/facultad" in url or ".pe/arquitectura" in url:
                 utp_urls["url_facultades"]["urls"].append(url)
-            elif "https://www.utp.edu.pe/pregrado" == url or "https://www.utp.edu.pe/pregrado/ab-testing" == url:
+            elif "https://www.utp.edu.pe/pregrado" == url or "https://www.utp.edu.pe/pregrado/ab-testing" == url or "https://www.utp.edu.pe/virtual" == url:
                 pass
             else:
                 utp_urls["url_campus_o_sedes_utp"]["urls"].append(url)
