@@ -8,7 +8,7 @@ from external_data.google.bigquery import execute_query, schema_campaign_info
 import requests
 import json
 
-mcp = FastMCP("mcp-social-network", stateless_http=True)
+mcp = FastMCP("mcp-social-networks", stateless_http=True)
 
 @mcp.tool()
 def listar_publicaciones_instagram_utp(from_date: str, to_date: str) -> List[Dict]:

@@ -11,25 +11,24 @@ from typing import Annotated
 
 mcp = FastMCP("mcp-ads", stateless_http=True)
 
-@mcp.tool()
-def obtener_informacion_campaigns_crm(from_date: str, to_date: str, campaigns_name: list[str], source) -> Dict:
-    """Obtiene los leads generados en CRM entre dos fechas específicas para análisis, estos leads pertenecen a Facebook tanto por web, por zapier y por whatsapp.
-    Este tool normalmente es usado luego de obtener la informacion de las campañas de ADS de la plataforma (obtener_informacion_ads_campaign_facebook).
-    
-    Notas a tener en cuenta:
+@mcp.tool(
+    name="obtener_informacion_campaigns_crm",
+    description="""
+        Obtiene los leads generados en CRM entre dos fechas específicas para análisis, estos leads pertenecen a las diferentes plataformas de redes sociales
+
+        Notas a tener en cuenta:
         - Solo ejecutar esta herramienta si piden informacion de leads.
         - Si te mencionan alguna plataforma, google, tiktok, bing o facebook, esto vara el 'source'.
-        - Debes ejecutar el tool 'obtener_informacion_campaigns_crm' para obtener los leads generados en CRM y asi tener un analisis completo del funnel.
-        - facebook es igual a meta_ads.
         - utm_campaign es igual a campaign.
         - utm_content es igual a ad_group_name.
-
-    Args:
-        from_date: Fecha de inicio en formato 'YYYY-MM-DD'.
-        to_date: Fecha de fin en formato 'YYYY-MM-DD'.
-        campaigns_name: Lista de nombres de campañas [obligatorio], si no recibe una campaña no debes ejecutar.
-        source: Fuente de los leads, puede ser 'facebook', 'tiktok', 'google', 'bing'.
-    """
+    """,
+    tags=["crm", "google", "bing", "tiktok", "facebook", "meta_ads", "leads"]
+)
+def obtener_informacion_campaigns_crm(
+    from_date: Annotated[str, "Fecha de inicio en formato 'YYYY-MM-DD'."],
+    to_date: Annotated[str, "Fecha de fin en formato 'YYYY-MM-DD'."],
+    campaigns_name: Annotated[list[str], "Lista de nombres de campañas [obligatorio], si no recibe una campaña no debes ejecutar."],
+) -> Dict:
     try:
         response = requests.get(
             f"http://0.0.0.0:8001/meta/leads",
