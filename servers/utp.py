@@ -47,7 +47,7 @@ def solicitar_urls_informacion_utp(
 
                     /cgt - Carreras para Gente que Trabaja (semipresencial).
                     /carreras-a-distancia - Carreras Virtuales a Distancia.
-                    / - Modalidad Presencial y a la vez el Home de UTP.
+                    https://www.utp.edu.pe/ - Modalidad Presencial y a la vez el Home de UTP el cual muestra informacion general como carreras, modalidades, sedes, facultades, entre otros pero solo a rasgos generales no se debe usar para obtener informacion detallada.
                 """,
                 "urls": []
             },
@@ -99,12 +99,11 @@ def solicitar_urls_informacion_utp(
         return {"error": str(e)}
 
 @mcp.tool(
-    name="obtener_informacion_carreras_utp",
+    name="obtener_informacion_sobre_utp",
     description="""
-        Obtiene la informacion de la carrera de la UTP que el usuario solicite.
+        Obtiene la informacion sobre la UTP (Universidad Tecnologica del Peru) que el usuario solicite.
         Notas a tener en cuenta:
-        - Solo ejecutar esta herramienta si piden informacion de alguna carrera de la UTP.
-        - Debes buscar la carrera en la lista de urls proporcionada.
+        - Solo ejecutar esta herramienta si piden informacion de sobre la UTP.
         - Solo debes responder lo que el usuario pregunte sobre la carrera, no expliques todo se preciso.
         - Si no encuentras la carrera, debes indicarle que no se encontro informacion.
         - Si el usuario solo pregunto algo general, responde algo resumido sobre la carrera.
@@ -113,9 +112,9 @@ def solicitar_urls_informacion_utp(
 
         La informacion devuelta estara en formato HTML para facilitar su lectura. Asi que debes asegurarte de procesar bien la informacion y darle en un formato claro al usuario.
     """,
-    tags=["carreras", "utp", "informacion_carrera"]
+    tags=["carreras", "utp", "modalidades", "informacion_carrera", "facultades", "sedes", "campus"],
 )
-def obtener_informacion_carreras_utp(
+def obtener_informacion_sobre_utp(
     url_carrera: Annotated[str, f"URL de la UTP a consultar"],
 ) -> Dict:
     try:
@@ -181,23 +180,26 @@ def registrar_usuario_crm_utp(
         print(f"Request error: {req_error}")
         return {"error": str(req_error)}
 
-def clean_html(html):
+def clean_html(html, url=None):
     soup = BeautifulSoup(html, 'html.parser')
 
     # Lista de etiquetas a eliminar completamente
-    etiquetas_a_eliminar = ['script', 'style', 'link', 'meta', 'svg', 'path', 'circle', 'rect', 
-                           'nav', 'footer', 'header', 'button', 'footer']
+    etiquetas_a_eliminar = ['script', 'style', 'meta', 'svg', 'path', 'circle', 'rect', 
+                           'nav', 'button', 'noscript']
     
+    if url != "https://www.utp.edu.pe/":
+        etiquetas_a_eliminar.extend(['header', 'footer'])
+
     for etiqueta in soup.find_all(etiquetas_a_eliminar):
         etiqueta.decompose()
     
     # Para las etiquetas que queremos mantener pero limpiar sus atributos
-    etiquetas_a_limpiar = ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
-                          'a', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'img']
+    etiquetas_a_limpiar = ['div', 'span', 'section', 'main', 'picture', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                          'a', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'img', 'source', 'header']
     
     for etiqueta in soup.find_all(etiquetas_a_limpiar):
         # Mantener solo algunos atributos esenciales
-        atributos_permitidos = ['href', 'src', 'alt']  # puedes ajustar esta lista
+        atributos_permitidos = ['href', 'src', 'alt', 'data-src']  # puedes ajustar esta lista
         atributos_actuales = list(etiqueta.attrs.keys())
         
         for atributo in atributos_actuales:
