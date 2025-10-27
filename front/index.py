@@ -71,8 +71,8 @@ async def main(message: cl.Message):
 
         config = types.GenerateContentConfig(
             tools=tools if tools else None,  # 🔥 No pasar tools si está vacío
-            max_output_tokens=1024,
-            temperature=1,
+            # max_output_tokens=1024,
+            temperature= 0.5 if chat_profile == "UTP Informativo" else 1.5,
             top_p=0.95,
             top_k=40,
             system_instruction=cl.user_session.get("system_prompt", "")
@@ -94,7 +94,7 @@ async def main(message: cl.Message):
             contents=messages,
             config=config
         )
-        
+
         async for chunk in stream:
             # 🔥 DETECTAR function calls en el stream
             if chunk.candidates:
@@ -119,7 +119,14 @@ async def main(message: cl.Message):
         print(f"Tool calls: {tool_calls_detected}")
 
         if tool_calls_detected:
-            await handle_tool_calls(client, msg, tool_calls_detected, messages, mcp_tools, full_response, message.content)
+            await handle_tool_calls(
+                client,
+                msg, 
+                tool_calls_detected, 
+                messages, 
+                mcp_tools, 
+                message.content
+            )
         else:
             # Mantener sólo los últimos 10 intercambios (20 mensajes)
             if len(chat_history) > 20:

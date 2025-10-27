@@ -12,7 +12,7 @@ from typing import Annotated
 mcp = FastMCP("mcp-ads", stateless_http=True)
 
 @mcp.tool(
-    name="obtener_informacion_campaigns_crm",
+    name="obtener_informacion_leads_crm",
     description="""
         Obtiene los leads generados en CRM entre dos fechas específicas para análisis, estos leads pertenecen a las diferentes plataformas de redes sociales
 
@@ -32,7 +32,7 @@ def obtener_informacion_campaigns_crm(
     try:
         response = requests.get(
             f"http://0.0.0.0:8001/meta/leads",
-            params={"from_date": from_date, "to_date": to_date, "campaigns_name": json.dumps(campaigns_name), "source": source}
+            params={"from_date": from_date, "to_date": to_date, "campaigns_name": json.dumps(campaigns_name)}
         )
 
         response.raise_for_status()
@@ -67,11 +67,22 @@ def obtener_informacion_campaigns_crm(
 
 @mcp.tool(
     name="obtener_informacion_campaign_ads",
-    description="Obtiene la información de las campañas de Google, Bing o Tiktok y Facebook.",
+    description="""
+        Obtiene la información de las campañas de Google, Bing o Tiktok y Facebook.
+        Ten en cuenta que esta información es solo para análisis y no incluye leads.
+        No requieres de fechas para tu consultas, si el usuario las proporciona usalas, si no, consulta como lo veas conveniente.
+
+        Notas a tener en cuenta:
+        - Solo ejecutar esta herramienta si piden informacion de campañas.
+        - Si te mencionan alguna plataforma, google, tiktok, bing o facebook, esto
+        - Debes ejecutar el tool 'obtener_informacion_campaigns_crm' para obtener los leads generados en CRM y asi tener un analisis completo del funnel.
+        - utm_campaign es igual a campaign.
+        - utm_content es igual a ad_name.
+    """,
     tags=["ads", "google", "bing", "tiktok", "facebook", "meta_ads", "bigquery"]
 )
 def obtener_informacion_campaign_ads(
-    sql_query: Annotated[str, "Consulta SQL para ejecutar en BigQuery siempre a la tabla api-audiencias-309221.raw_windsor_ads.campañas_unificadas"]
+    sql_query: Annotated[str, f"Consulta SQL para ejecutar en BigQuery, recuerda siempre dar un nombre a las columnas basados en el schema proporcionado {schema_campaign_info}"]
 ) -> Dict:
 
     try:
@@ -97,7 +108,7 @@ async def get_schema_tables_bigquery_resource() -> str:
                 "description": "Sirve para dar informacion sobre campañas de Tiktok, Bing y Google, la informacion es de los ultimos 2 años y ayuda a tener un mejor analisis historico.",
                 "fields": [
                     {"name": "date", "type": "DATE", "mode": "NULLABLE"},
-                    {"name": "source", "type": "STRING", "mode": "NULLABLE", "allowed_values": ["tiktok", "google", "bing", "meta_ads"]},
+                    {"name": "source", "type": "STRING", "mode": "NULLABLE", "allowed_values": ["tiktok", "google", "bing", "facebook", "dv360"]},
                     {"name": "campaign", "type": "STRING", "mode": "NULLABLE"},
                     {"name": "ad_group_name", "type": "STRING", "mode": "NULLABLE"},
                     {"name": "ad_name", "type": "STRING", "mode": "NULLABLE"},

@@ -3,17 +3,17 @@ from google.genai import types
 
 SLM_MODEL = "gemini-2.5-flash-lite"
 
-async def handle_tool_calls(client, msg, tool_calls, messages, mcp_tools, user_message):
+async def handle_tool_calls(
+    client,
+    msg, 
+    tool_calls, 
+    messages, 
+    mcp_tools, 
+    user_message
+):
     """Maneja tool calls con confirmación del usuario usando botones"""
-    # await msg.stream_token("\n\n🛠️ **Ejecutando herramientas...**\n")
 
-    # tool_summary = await create_tool_summary(tool_calls, mcp_tools)
-
-    # await msg.stream_token(
-    #     f"🔍 **Solicitud de Búsqueda**\n\n"
-    #         f"Para responder a tu pregunta, ejecutare las siguientes búsquedas:\n\n"
-    #         f"{tool_summary}\n\n"
-    # )
+    chat_profile = cl.user_session.get("chat_profile")
 
     for tool_call in tool_calls:
         tool_name = tool_call.name
@@ -35,26 +35,23 @@ async def handle_tool_calls(client, msg, tool_calls, messages, mcp_tools, user_m
     
     # 6. Segunda llamada con los resultados de las herramientas
     # await msg.stream_token("\n📝 **Generando respuesta final...**\n")
-    
+    print('messages', messages)
     final_stream = await client.aio.models.generate_content_stream(
         model=SLM_MODEL,
         contents=messages,
         config=types.GenerateContentConfig(
-            max_output_tokens=512,
-            temperature=0.7,
+            # max_output_tokens=512,
+            temperature=0.5 if chat_profile == "UTP Informativo" else 1.5,
             # system_instruction=system_prompt
             system_instruction=cl.user_session.get("system_prompt", "")
         )
     )
-    
+
     final_response = ""
     async for chunk in final_stream:
         if chunk.text:
             final_response += chunk.text
             await msg.stream_token(chunk.text)
-    # else:
-    #     await msg.stream_token("\n❌ Búsqueda cancelada por el usuario.\n")
-    #     full_response += "\n❌ Búsqueda cancelada por el usuario.\n"
     
     # ACTUALIZAR HISTORIAL de conversación
     chat_history = cl.user_session.get("chat_history", [])
@@ -62,6 +59,7 @@ async def handle_tool_calls(client, msg, tool_calls, messages, mcp_tools, user_m
     chat_history.append(convert_message_to_gemini_format("model", final_response))
 
     cl.user_session.set("chat_history", chat_history)
+
 
 async def create_tool_summary(tool_calls, mcp_tools):
     """Crea un resumen legible de las herramientas a ejecutar"""

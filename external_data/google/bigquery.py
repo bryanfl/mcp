@@ -7,21 +7,19 @@ client = bigquery.Client()
 
 schema_campaign_info = {
     "project": "api-audiencias-309221",
-    "dataset": "raw_windsor_ads",
-    "table": "campañas_unificadas",
+    "dataset": "raw_utp_mkt_data_campaigns",
+    "table": "blend_raw_data",
     "description": "Sirve para dar informacion sobre campañas de Tiktok, Bing y Google y Meta ADS, la informacion es de los ultimos 2 años y ayuda a tener un mejor analisis historico.",
     "fields": [
-        {"name": "date", "type": "DATE", "mode": "NULLABLE"},
-        {"name": "source", "type": "STRING", "mode": "NULLABLE", "allowed_values": ["tiktok", "google", "bing", "meta_ads"]},
-        {"name": "campaign", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "ad_group_name", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "account_name", "type": "STRING", "mode": "NULLABLE"},
         {"name": "ad_name", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "Identificador del anuncio", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "Spend", "type": "FLOAT", "mode": "NULLABLE"},
-        {"name": "datasource", "type": "STRING", "mode": "NULLABLE"},
-        {"name": "impressions", "type": "BIGNUMERIC", "mode": "NULLABLE"},
+        {"name": "asset_name", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "campaign", "type": "STRING", "mode": "NULLABLE"},
         {"name": "clicks", "type": "BIGNUMERIC", "mode": "NULLABLE"},
-        # {"name": "rn", "type": "INTEGER", "mode": "NULLABLE"}
+        {"name": "datasource", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "date", "type": "DATE", "mode": "NULLABLE"},
+        {"name": "source", "type": "STRING", "mode": "NULLABLE", "allowed_values": ["tiktok", "google", "bing", "facebook", "dv360"]},
+        {"name": "spend", "type": "FLOAT", "mode": "NULLABLE"},
     ]
 }
 
