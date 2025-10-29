@@ -210,4 +210,4 @@ def clean_html(html, url=None):
     return soup.prettify()
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8104, path="/mcp")
+    mcp.run(transport="http", host="0.0.0.0", port=8102, path="/mcp")
