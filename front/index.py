@@ -56,7 +56,7 @@ async def connect_mcp_automatically(session_id: str):
         mcp_config = {
             "clientType": "streamable-http", 
             "name": "UTP Informativo",
-            "url": "http://localhost:8102/mcp",
+            "url": os.getenv("URL_MCP_INFORMATIVO") + "/mcp",
             "sessionId": session_id
         }
         
@@ -68,7 +68,7 @@ async def connect_mcp_automatically(session_id: str):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    "http://localhost:8100/mcp",  # Tu endpoint MCP
+                    f"{os.getenv('URL_FRONT')}/mcp",  # Tu endpoint MCP
                     json=mcp_config,
                     headers={
                         "Content-Type": "application/json",
