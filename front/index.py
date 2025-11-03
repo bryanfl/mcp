@@ -56,7 +56,7 @@ async def connect_mcp_automatically(session_id: str):
         mcp_config = {
             "clientType": "streamable-http", 
             "name": "UTP Informativo",
-            "url": os.getenv("URL_MCP_INFORMATIVO") + "/mcp",
+            "url": f"{os.getenv('URL_MCP_INFORMATIVO')}/mcp",
             "sessionId": session_id
         }
         
