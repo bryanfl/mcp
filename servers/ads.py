@@ -169,4 +169,4 @@ def preprocess_lead_data(data):
     }
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8101, path="/mcp")
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8101, path="/mcp")

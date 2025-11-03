@@ -5,20 +5,24 @@ from google.genai import types
 from utils.mcp_actions import handle_tool_calls, execute_mcp_tool, convert_to_gemini_format, convert_message_to_gemini_format
 from bots.utp_informativo import system_prompt_utp_informativo
 from bots.utp_ads import system_prompt_utp_ads
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 mcp_sessions = {}
 available_tools = {}
-client = genai.Client(api_key='AIzaSyCLR14IKR7zrvX6BaGMFNn4KNNtNqEX-IU')
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 SLM_MODEL = "gemini-2.5-flash-lite"
 
 @cl.set_chat_profiles
 async def chat_profile():
     return [
-        cl.ChatProfile(
-            name="UTP ADS",
-            markdown_description="Realiza tus consultas sobre campañas en UTP",
-            icon="https://www.utp.edu.pe/sites/default/files/favicon_utp_1.png",
-        ),
+        # cl.ChatProfile(
+        #     name="UTP ADS",
+        #     markdown_description="Realiza tus consultas sobre campañas en UTP",
+        #     icon="https://www.utp.edu.pe/sites/default/files/favicon_utp_1.png",
+        # ),
         cl.ChatProfile(
             name="UTP Informativo",
             markdown_description="Realiza tus consultas sobre la UTP en general",
@@ -37,10 +41,67 @@ def auth_callback(username: str, password: str):
     else:
         return None
 
+async def connect_mcp_automatically(session_id: str):
+    """Conectar automáticamente al servidor MCP desde el backend"""
+    try:
+        context = cl.context.session
+        print(f"🔍 Tipo de contexto: {type(context)}")
+        print(f"🔍 Atributos disponibles: {dir(context)}")
+
+        if hasattr(context, 'token') and context.token:
+            access_token = context.token
+        
+        # 🔥 CONFIGURACIÓN MCP
+        print(f"🔍 ID de sesión: {session_id}")
+        mcp_config = {
+            "clientType": "streamable-http", 
+            "name": "UTP Informativo",
+            "url": "http://localhost:8102/mcp",
+            "sessionId": session_id
+        }
+        
+        print(f"🔗 Iniciando conexión MCP automática...")
+        
+        # 🔥 SIMULAR LA LLAMADA MCP DIRECTAMENTE
+        # En un caso real, aquí harías la conexión HTTP a tu servidor MCP
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:8100/mcp",  # Tu endpoint MCP
+                    json=mcp_config,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {access_token}"
+                    }
+                ) as response:
+                    if response.status == 200:
+                        print("✅ Conexión MCP exitosa")
+                        
+                        # await cl.Message(
+                        #     content="✅ **Conexión MCP establecida automáticamente**\n\n"
+                        #            "El servidor está listo para usar todas las herramientas disponibles."
+                        # ).send()
+                    else:
+                        raise Exception(f"HTTP {response.status}: {await response.text()}")
+                        
+        except Exception as e:
+            print(f"⚠️ No se pudo conectar al MCP: {e}")
+            # No es crítico, puede continuar sin MCP
+            await cl.Message(
+                content="ℹ️ *Nota: Algunas funciones avanzadas pueden no estar disponibles*"
+            ).send()
+            
+    except Exception as e:
+        print(f"❌ Error en conexión MCP automática: {e}")
+
+
 @cl.on_chat_start
 async def on_chat_start():
     chat_profile = cl.user_session.get("chat_profile", [])
-    print("chat_profile", chat_profile)
+    print("id_session", cl.user_session.get("id", ""))
+    await connect_mcp_automatically(cl.user_session.get("id", ""))
+
     if chat_profile == "UTP Informativo":
         print("Setting UTP Informativo system prompt")
         cl.user_session.set("system_prompt", system_prompt_utp_informativo)
@@ -187,7 +248,7 @@ async def on_mcp_connect(connection, session: ClientSession):
         cl.user_session.set("agent", None)
         
         # Mensaje de confirmación
-        tools_list = "\n".join([f"• `{tool['name']}`" for tool in tools])
+        # tools_list = "\n".join([f"• `{tool['name']}`" for tool in tools])
         # await cl.Message(
         #     content=f"✅ **Conectado a MCP:** {connection.name}\n\n"
         #            f"🔧 **Herramientas disponibles:**\n{tools_list}"
