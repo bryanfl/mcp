@@ -152,20 +152,20 @@ default_avatar_file_url = ""
 [meta]
 generated_by = "2.8.3"
 
-[mcp]
+#[mcp]
 
 # Servidor para análisis de ADS (ya corriendo en puerto 8002)
-[mcp."UTP ADS"]
-command = "npx"
-args = [
-    "@modelcontextprotocol/server-fetch", 
-    "http://0.0.0.0:8002/mcp"
-]
+#[mcp."UTP ADS"]
+#command = "npx"
+#args = [
+#    "@modelcontextprotocol/server-fetch", 
+#    "http://0.0.0.0:8002/mcp"
+#]
 
 # Servidor para información UTP (asumiendo que corre en puerto 8104)
-[mcp."UTP Informativo"]
-command = "npx"
-args = [
-    "@modelcontextprotocol/server-fetch",
-    "http://0.0.0.0:8104/mcp"
-]
+#[mcp."UTP Informativo"]
+#command = "npx"
+#args = [
+#    "@modelcontextprotocol/server-fetch",
+#    "http://0.0.0.0:8104/mcp"
+#]
