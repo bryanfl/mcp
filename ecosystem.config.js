@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: "mcp-utp-ads",
+      name: "agent",
       script: "uv",
-      args: "run servers/ads.py",
+      args: "run chat/back/index.py",
       interpreter: "none",
       env_file: ".env",
       instances: 1,
@@ -25,11 +25,10 @@ module.exports = {
       time: true
     },
     {
-      name: "chat-utp",
-      script: ".venv/bin/chainlit",
-      args: "run front/index.py --port 8100",
+      name: "chat",
+      script: "npx",  // Usar npx en lugar de serve directamente
+      args: "serve -s chat/front/dist/ -l 8100",
       interpreter: "none",
-      env_file: ".env",
       instances: 1,
       autorestart: true,
       watch: false,
