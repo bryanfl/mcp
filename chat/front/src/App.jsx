@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function App() {
   const [messages, setMessages] = useState([])
@@ -14,6 +16,16 @@ function App() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const cleanMarkdownContent = (content) => {
+    if (!content) return content;
+    
+    let processed = content;
+
+    // processed = processed.replace(/(?<!\*)\* {3}/g, '\n*   ');
+
+    return processed;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -43,14 +55,13 @@ function App() {
         })
       })
 
-      console.log(response)
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
+      let accumulatedContent = ''
 
       while (true) {
         const { done, value } = await reader.read()
@@ -58,22 +69,27 @@ function App() {
         if (done) break
 
         const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
+        console.log(chunk)
+        // const lines = chunk.split('\n')
+        // console.log(lines)
 
-        lines.forEach((line, i) => {
-          try {
-            const delta = line.startsWith('data: ') ? line.slice(6) : line
-
-            setMessages(prev => prev.map(msg => 
-              msg.id === loadingMessageId 
-                ? { ...msg, content: msg.content + delta.trim() }
-                : msg
-            ))
-
-          } catch (e) {
-            console.error('Error parsing SSE data:', e)
-          }
-        });
+        // for (const line of lines) {
+        //   const delta = line
+          
+        //   if (delta) {
+        //     // Acumular contenido
+        accumulatedContent += chunk
+            
+            // const cleanContent = cleanMarkdownContent(accumulatedContent);
+            
+            // Procesar el contenido para unir palabras rotas
+        setMessages(prev => prev.map(msg => 
+          msg.id === loadingMessageId 
+            ? { ...msg, content: accumulatedContent }
+            : msg
+        ))
+        //   }
+        // }
       }
     } catch (error) {
       console.error('Error:', error)
@@ -96,9 +112,11 @@ function App() {
       <div className="messages-container">
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.type}`}>
-            <div className="message-content">
-              {message.content}
-              {isLoading && message.type === 'assistant' && <span className="loading-dots">...</span>}
+            <div className="message-content markdown-body">
+              <Markdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </Markdown>
+              {/* {isLoading && message.type === 'assistant' && <span className="loading-dots">...</span>} */}
             </div>
           </div>
         ))}

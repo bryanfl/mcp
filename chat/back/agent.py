@@ -152,7 +152,6 @@ async def handle_tool_calls(
         print(tool_name, tool_args)
         # Ejecutar la herramienta MCP
         tool_result = await mcp_client.call_tool(tool_name, tool_args,)
-        print(f"Resultado de la herramienta {tool_name}: {tool_result}")
         # Agregar resultado al contexto para segunda llamada
         messages.append(types.Content(
             role="function",
@@ -213,8 +212,8 @@ async def chat(message):
         
         # Extraer texto si existe
         if chunk.text:
-            yield f"data: {chunk.text}\n\n"
-            await asyncio.sleep(0.01)
+            print(repr(chunk.text))
+            yield f"{chunk.text}"
 
     print("\nTool calls detectados durante el stream:")
 
@@ -228,5 +227,5 @@ async def chat(message):
 
         async for chunk in final_stream:
             if chunk.text:
-                yield f"data: {chunk.text}\n\n"
-                await asyncio.sleep(0.01)
+                print(repr(chunk.text))
+                yield f"{chunk.text}"
