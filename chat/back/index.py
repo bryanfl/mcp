@@ -34,9 +34,9 @@ def chat_stream_generator(message: str):
         time.sleep(0.5)  # Para simular procesamiento
 
 @app.post("/agent/chat")
-async def agent_message(message: str = Body(..., embed=True)):
+async def agent_message(message: str = Body(..., embed=True), history: list = Body(default=[], embed=True)):
     return StreamingResponse(
-        chat(message), 
+        chat(message, history=history), 
         media_type="text/event-stream"
     )
 

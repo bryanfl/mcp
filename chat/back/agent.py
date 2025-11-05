@@ -99,6 +99,7 @@ system_prompt_utp_informativo = f"""Eres un asistente especializado de la Univer
     - Si no sabes la respuesta, di que no sabes.
     - Usa las herramientas disponibles para buscar información específica sobre la UTP cuando sea necesario.
     - No inventes información.
+    - Eres capaz de manejar múltiples tool calls en una sola conversación esto si te piden comparativas entre dos carreras, asi puedes consultar dos o mas veces un tool con diferentes parametros.
 
     DEBES TOMAR COMO BASE ESTAS URLS PARA CONSULTAS SOBRE LA UTP:
     {get_urls_utp()}
@@ -172,7 +173,7 @@ async def handle_tool_calls(
 
     return final_stream
     
-async def chat(message):
+async def chat(message, history=[]):
     print("message", message)
     tools = await mcp_utp_informativo.list_tools()
     tools = convert_to_gemini_format(tools)
@@ -186,9 +187,10 @@ async def chat(message):
         system_instruction=system_prompt_utp_informativo
     )
 
-    messages = [
-        convert_message_to_gemini_format("user", message)
-    ]
+    messages = []
+    for m in history:
+        messages.append(convert_message_to_gemini_format(m["role"], m["message"]))
+    messages.append(convert_message_to_gemini_format("user", message))
 
     stream = await client.aio.models.generate_content_stream(
         model=SLM_MODEL,
