@@ -26,13 +26,18 @@ module.exports = {
     },
     {
       name: "chat",
-      cwd: "chat/front",          // 🔹 Usa 'cwd' en lugar de 'pwd'
+      cwd: "chat/front",
       script: "pnpm",
-      args: "start -p 8100",      // 🔹 Pasar el puerto correctamente
+      args: "start -p 8100",
+      interpreter: "bash",
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: "1G",
+      env: {
+        NODE_ENV: "production",
+        PATH: process.env.PATH
+      },
       time: true
     }
     // {
