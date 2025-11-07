@@ -24,28 +24,28 @@ module.exports = {
       max_memory_restart: "1G",
       time: true
     },
-    // {
-    //   name: "chat",
-    //   script: "npx",  // Usar npx en lugar de serve directamente
-    //   args: "serve -s chat/front/dist/ -l 8100",
-    //   interpreter: "none",
-    //   instances: 1,
-    //   autorestart: true,
-    //   watch: false,
-    //   max_memory_restart: "1G",
-    //   time: true
-    // },
     {
       name: "chat",
-      script: ".venv/bin/chainlit",
-      args: "run front/index.py --port 8100",
-      interpreter: "none",
-      env_file: ".env",
+      cwd: "chat/front",          // 🔹 Usa 'cwd' en lugar de 'pwd'
+      script: "pnpm",
+      args: "start -p 8100",      // 🔹 Pasar el puerto correctamente
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: "1G",
       time: true
     }
+    // {
+    //   name: "chat",
+    //   script: ".venv/bin/chainlit",
+    //   args: "run front/index.py --port 8100",
+    //   interpreter: "none",
+    //   env_file: ".env",
+    //   instances: 1,
+    //   autorestart: true,
+    //   watch: false,
+    //   max_memory_restart: "1G",
+    //   time: true
+    // }
   ]
 };

@@ -1,58 +1,152 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import trafilatura
+from typing import List, Dict, Optional
+from fastmcp import FastMCP
+from external_data.google.bigquery import execute_query, schema_campaign_info
 import requests
+import json
+from typing import Annotated
 from bs4 import BeautifulSoup
-response = requests.get("https://utp.edu.pe/sitemap.xml")
-soup = BeautifulSoup(response.text, 'html.parser')
+import re
+from boilerpy3 import extractors
 
-# Encontrar todos los elementos <loc> y extraer su texto
-loc_values = [loc.get_text(strip=True) for loc in soup.find_all('loc')]
+def obtener_informacion_sobre_utp(
+    url_carrera: Annotated[str, f"URL de la UTP a consultar"],
+) -> Dict:
+    try:
+        response = requests.get(
+            f"{url_carrera}",
+        )
 
-utp_urls = {
-    "url_modalidades": {
-        "description": """
-            URLs de las modalidades de estudio de la UTP.
+        response.raise_for_status()
+        
+        html = limpiar_html_boilerpy(response.text)
 
-            /cgt - Carreras para Gente que Trabaja (semipresencial).
-            /carreras-a-distancia - Carreras Virtuales a Distancia.
-            https://www.utp.edu.pe/ - Modalidad Presencial y a la vez el Home de UTP el cual muestra informacion general como carreras, modalidades, sedes, facultades, entre otros pero solo a rasgos generales no se debe usar para obtener informacion detallada.
-        """,
-        "urls": []
-    },
-    "url_carreras_pregrado": {
-        "description": "URLs de las carreras de pregrado de la UTP.",
-        "urls": []
-    },
-    "url_carreras_cgt_semipresencial": {
-        "description": "URLs de las carreras de CGT semipresencial de la UTP.",
-        "urls": []
-    },
-    "url_carreras_virtual_a_distancia": {
-        "description": "URLs de las carreras virtuales a distancia de la UTP.",
-        "urls": []
-    },
-    "url_facultades": {
-        "description": "URLs de las facultades de la UTP.",
-        "urls": []
-    },
-    "url_campus_o_sedes_utp": {
-        "description": "URLs de los campus o sedes de la UTP.",
-        "urls": []
+        return html
+    except requests.RequestException as req_error:
+        print(f"Request error: {req_error}")
+        return {"error": str(req_error)}
+
+def limpiar_html_boilerpy(html: str):
+    extractor = extractors.KeepEverythingExtractor()
+    html = clean_html_text(html)
+    texto = extractor.get_content(html)
+
+    # 🔹 Analizar estructura con BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    imagenes = []
+
+    for img in soup.find_all("img"):
+        # Detectar si la imagen es un placeholder (base64)
+        src = img.get("data-src") or img.get("src")
+        if not src:
+            continue
+
+        if src.startswith("data:image"):
+            # Buscar <source> hermano dentro del mismo <picture>
+            picture = img.find_parent("picture")
+            if picture:
+                source = picture.find("source")
+                if source and source.get("data-srcset"):
+                    src = source["data-srcset"]
+
+        alt = img.get("alt", "").strip() or None
+
+        # Buscar <section> o <div> con id más cercano
+        seccion = None
+        for parent in img.parents:
+            if parent.name in ["section"]:
+                sec_id = parent.get("id")
+                if sec_id:
+                    seccion = sec_id
+                    break
+
+        imagenes.append({
+            "alt": alt,
+            "src": f"https://utp.edu.pe{src.strip()}",
+            "seccion": seccion or "sin_seccion"
+        })
+
+    return {
+        "texto": texto,
+        "imagenes": imagenes
     }
-}
 
-for url in loc_values:
-    if "/pregrado/facultad" in url:
-        utp_urls["url_carreras_pregrado"]["urls"].append(url)
-    elif "/cgt/facultad" in url or "/carreras-para-gente-que-trabaja/facultad" in url:
-        utp_urls["url_carreras_cgt_semipresencial"]["urls"].append(url)
-    elif "/carreras-a-distancia/facultad" in url:
-        utp_urls["url_carreras_virtual_a_distancia"]["urls"].append(url)
-    elif "https://www.utp.edu.pe/" == url or "https://www.utp.edu.pe/cgt" == url or "https://www.utp.edu.pe/carreras-a-distancia" == url:
-        utp_urls["url_modalidades"]["urls"].append(url)
-    elif ".pe/facultad" in url or ".pe/arquitectura" in url:
-        utp_urls["url_facultades"]["urls"].append(url)
-    elif "https://www.utp.edu.pe/pregrado" == url or "https://www.utp.edu.pe/pregrado/ab-testing" == url or "https://www.utp.edu.pe/virtual" == url:
-        pass
-    else:
-        utp_urls["url_campus_o_sedes_utp"]["urls"].append(url)
+def clean_html_text(html, url=None):
+    soup = BeautifulSoup(html, 'html.parser')
 
-print(utp_urls)
+    # Lista de etiquetas a eliminar completamente
+    etiquetas_a_eliminar = ['script', 'style', 'meta', 'svg', 'path', 'circle', 'rect', 
+                           'nav', 'button', 'noscript', 'form']
+    
+    if url != "https://www.utp.edu.pe/":
+        etiquetas_a_eliminar.extend(['header', 'footer'])
+
+    for etiqueta in soup.find_all(etiquetas_a_eliminar):
+        etiqueta.decompose()
+    
+    # Para las etiquetas que queremos mantener pero limpiar sus atributos
+    etiquetas_a_limpiar = ['div', 'span', 'section', 'main', 'picture', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'img', 'header']
+    
+    # 🔥 Eliminar cualquier <div> cuyo id comience con "form"
+    candidates = []
+
+    for div in soup.find_all('div', id=True):
+        if div['id'].lower().startswith('form'):
+            candidates.append(div)
+
+    for div in candidates:
+        div.decompose()
+    
+    for etiqueta in soup.find_all(etiquetas_a_limpiar):
+        # Mantener solo algunos atributos esenciales
+        atributos_permitidos = ['href', 'src', 'alt', 'data-src', "id", "srcset"]  # puedes ajustar esta lista
+        atributos_actuales = list(etiqueta.attrs.keys())
+        
+        for atributo in atributos_actuales:
+            if atributo not in atributos_permitidos:
+                del etiqueta[atributo]
+    
+    return soup.prettify()
+
+def clean_html(html, url=None):
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # Lista de etiquetas a eliminar completamente
+    etiquetas_a_eliminar = ['script', 'style', 'meta', 'svg', 'path', 'circle', 'rect', 
+                           'nav', 'button', 'noscript', 'form']
+    
+    if url != "https://www.utp.edu.pe/":
+        etiquetas_a_eliminar.extend(['header', 'footer'])
+
+    for etiqueta in soup.find_all(etiquetas_a_eliminar):
+        etiqueta.decompose()
+    
+    # Para las etiquetas que queremos mantener pero limpiar sus atributos
+    etiquetas_a_limpiar = ['div', 'span', 'section', 'main', 'picture', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'img', 'source', 'header']
+    
+    # 🔥 Eliminar cualquier <div> cuyo id comience con "form"
+    candidates = []
+
+    for div in soup.find_all('div', id=True):
+        if div['id'].lower().startswith('form'):
+            candidates.append(div)
+
+    for div in candidates:
+        div.decompose()
+    
+    for etiqueta in soup.find_all(etiquetas_a_limpiar):
+        # Mantener solo algunos atributos esenciales
+        atributos_permitidos = ['href', 'src', 'alt', 'data-src', "id"]  # puedes ajustar esta lista
+        atributos_actuales = list(etiqueta.attrs.keys())
+        
+        for atributo in atributos_actuales:
+            if atributo not in atributos_permitidos:
+                del etiqueta[atributo]
+    
+    return soup.prettify()
+
+print(obtener_informacion_sobre_utp("https://www.utp.edu.pe"))
+# print(obtener_informacion_sobre_utp("https://www.utp.edu.pe/pregrado/facultad-de-ingenieria/ingenieria-de-sistemas-e-informatica"))
