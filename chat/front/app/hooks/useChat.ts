@@ -67,14 +67,26 @@ export function useChat() {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const valueDecoder = decoder.decode(value)
-
-        const match = valueDecoder.match(/({.*})/)
+        let valueDecoder = decoder.decode(value)
+        const match = valueDecoder.match(/({.*})/) 
+        console.log("match", match)
         if (match) {
           const meta: MetaData = JSON.parse(match[1])
-          console.log(meta)
 
           if (meta.accion === 'solicitar_contacto') {
+            console.log(valueDecoder)
+            valueDecoder = valueDecoder.replaceAll(match[1], '').replaceAll('>>>', '')
+            valueDecoder = valueDecoder.trim()
+
+            if (valueDecoder != "") {
+              accumulated += valueDecoder
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === loadingMessageId ? { ...msg, content: accumulated } : msg
+                )
+              )
+            }
+
             setMessages(prev => [
               ...prev,
               { role: 'model', content: '', type: 'action', action: 'contactar_asesor' }

@@ -1,18 +1,21 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import trafilatura
-from typing import List, Dict, Optional
+from typing import Dict
 from fastmcp import FastMCP
 from external_data.google.bigquery import execute_query, schema_campaign_info
+from external_data.utp.convalidaciones import get_convalidaciones
 import requests
-import json
-from typing import Annotated
+from typing import Annotated, Literal
 from bs4 import BeautifulSoup
 from boilerpy3 import extractors
+from fuzzywuzzy import fuzz, process
+import pandas as pd
 
 mcp = FastMCP("mcp-utp", stateless_http=True)
 
+df_convalidaciones = get_convalidaciones()
+print(df_convalidaciones.head())
 # @mcp.tool(
 #     name="solicitar_urls_informacion_utp",
 #     description="""
@@ -215,6 +218,132 @@ def clean_html_text(html, url=None):
     
     return soup.prettify()
 
+@mcp.tool(
+    name="convalidar_carrera_utp",
+    description="""
+        Busca dar inforamcion al usuario sobre las diferentes convalidaciones de carreras que tiene la UTP con diferentes institutos asi como tambien poder decir que cursos convalidara.
+        
+        Notas a tener en cuenta:
+        - Solo ejecutar esta herramienta si pide informacion sobre convalidar con la UTP.
+        - Si el usuario pregunta semipresencial, debes consultar si es 3 dias a la semana presencial (80-20) o 1 dia a la semana presencial (50-50).
+        - Siempre mencionas los cursos convalidados en la respuesta.
+        - Si no encuentras convalidaciones, debes indicarle que no se encontro informacion.
+        
+    """,
+    tags=["convalidar", "utp"]
+)
+def convalidar_carrera_utp(
+    instituto_origen: Annotated[str, "Nombre del instituto de origen donde estudio el usuario."],
+    carrera_procedencia: Annotated[str, "Nombre de la carrera de procedencia que estudio el usuario."],
+    carrera_utp: Annotated[str, "A que carrera de la UTP desea convalidar el usuario."],
+    modalidad: Annotated[Literal["PRESENCIAL", "80-20", "50-50", "VIRTUAL"], "Modalidad en la que desea estudiar el usuario."],
+    malla: Annotated[str, "Malla de la carrera de procedencia. las estructura siempre es 'MALLA <anio de la malla>'"] = "TABLA UNICA",
+) -> Dict:
+    try:
+        # 🔥 BÚSQUEDA FUZZY PARA INSTITUTO
+        institutos_disponibles = df_convalidaciones['INSTITUCIÓN DE ORIGEN'].dropna().unique().tolist()
+        instituto_match = process.extractOne(
+            instituto_origen, 
+            institutos_disponibles,
+            scorer=fuzz.partial_ratio,  # Permite coincidencias parciales
+            score_cutoff=70  # Umbral mínimo de similitud (70%)
+        )
+        
+        if not instituto_match:
+            return {
+                "success": False,
+                "message": f"No se encontró el instituto '{instituto_origen}'. Institutos disponibles: {institutos_disponibles[:5]}..."
+            }
+        
+        instituto_encontrado = instituto_match[0]
+        
+        # 🔥 BÚSQUEDA FUZZY PARA CARRERA DE PROCEDENCIA
+        carreras_procedencia_disponibles = df_convalidaciones[
+            df_convalidaciones['INSTITUCIÓN DE ORIGEN'] == instituto_encontrado
+        ]['CARRERA DE PROCEDENCIA'].dropna().unique().tolist()
+        
+        carrera_procedencia_match = process.extractOne(
+            carrera_procedencia,
+            carreras_procedencia_disponibles,
+            scorer=fuzz.partial_ratio,
+            score_cutoff=60
+        )
+        
+        if not carrera_procedencia_match:
+            return {
+                "success": False,
+                "message": f"No se encontró la carrera '{carrera_procedencia}' en {instituto_encontrado}. Carreras disponibles: {carreras_procedencia_disponibles}"
+            }
+        
+        carrera_procedencia_encontrada = carrera_procedencia_match[0]
+        
+        # 🔥 BÚSQUEDA FUZZY PARA CARRERA UTP
+        carreras_utp_disponibles = df_convalidaciones['CARRERA CONVALIDADA EN UTP'].dropna().unique().tolist()
+        carrera_utp_match = process.extractOne(
+            carrera_utp,
+            carreras_utp_disponibles,
+            scorer=fuzz.partial_ratio,
+            score_cutoff=60
+        )
+        
+        if not carrera_utp_match:
+            return {
+                "success": False,
+                "message": f"No se encontró la carrera UTP '{carrera_utp}'. Carreras UTP disponibles: {carreras_utp_disponibles[:5]}..."
+            }
+        
+        carrera_utp_encontrada = carrera_utp_match[0]
+        
+        # 🔥 FILTRAR DATAFRAME CON VALORES ENCONTRADOS
+        resultado = df_convalidaciones[
+            (df_convalidaciones['INSTITUCIÓN DE ORIGEN'] == instituto_encontrado) &
+            (df_convalidaciones['CARRERA DE PROCEDENCIA'] == carrera_procedencia_encontrada) &
+            (df_convalidaciones['CARRERA CONVALIDADA EN UTP'] == carrera_utp_encontrada) &
+            (df_convalidaciones['DISPONIBLE EN SUB GRADOS'] == modalidad) &
+            (df_convalidaciones['MALLA'] == malla)
+        ]
+        
+        if resultado.empty:
+            # Intentar búsqueda más flexible sin malla
+            resultado = df_convalidaciones[
+                (df_convalidaciones['INSTITUCIÓN DE ORIGEN'] == instituto_encontrado) &
+                (df_convalidaciones['CARRERA DE PROCEDENCIA'] == carrera_procedencia_encontrada) &
+                (df_convalidaciones['CARRERA CONVALIDADA EN UTP'] == carrera_utp_encontrada) &
+                (df_convalidaciones['DISPONIBLE EN SUB GRADOS'] == modalidad)
+            ]
+        
+        if resultado.empty:
+            return {
+                "success": False,
+                "message": f"No se encontraron convalidaciones para:\n- Instituto: {instituto_encontrado}\n- Carrera origen: {carrera_procedencia_encontrada}\n- Carrera UTP: {carrera_utp_encontrada}\n- Modalidad: {modalidad}"
+            }
+        
+        # Convertir resultado a diccionario para mejor presentación
+        convalidaciones = resultado.to_dict('records')
+
+        print({
+            "success": True,
+            "instituto_encontrado": instituto_encontrado,
+            "carrera_procedencia_encontrada": carrera_procedencia_encontrada,
+            "carrera_utp_encontrada": carrera_utp_encontrada,
+            "modalidad": modalidad,
+            "total_convalidaciones": len(convalidaciones),
+            "convalidaciones": convalidaciones
+        })
+        
+        return {
+            "success": True,
+            "instituto_encontrado": instituto_encontrado,
+            "carrera_procedencia_encontrada": carrera_procedencia_encontrada,
+            "carrera_utp_encontrada": carrera_utp_encontrada,
+            "modalidad": modalidad,
+            "total_convalidaciones": len(convalidaciones),
+            "convalidaciones": convalidaciones
+        }
+        
+    except Exception as e:
+        print(f"Error en convalidación: {e}")
+        return {"error": str(e)}
 
 @mcp.tool(
     name="registrar_usuario_crm_utp",
